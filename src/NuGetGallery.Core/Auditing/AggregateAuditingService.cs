@@ -14,6 +14,8 @@ namespace NuGetGallery.Auditing
     public sealed class AggregateAuditingService : IAuditingService
     {
         private readonly IAuditingService[] _services;
+        private readonly IAuditingService _defaultAuditingService;
+        private readonly IAuditingService _ifxAuditingService;
 
         /// <summary>
         /// Instantiates a new instance.
@@ -28,6 +30,11 @@ namespace NuGetGallery.Auditing
             }
 
             _services = services.ToArray();
+
+            Func<IAuditingService, bool> isIfxAuditingService = service => service.GetType().Name == "IfxAuditingService";
+
+            _defaultAuditingService = services.FirstOrDefault(service => !isIfxAuditingService(service));
+            _ifxAuditingService = services.SingleOrDefault(isIfxAuditingService);
         }
 
         /// <summary>
@@ -43,10 +50,29 @@ namespace NuGetGallery.Auditing
                 throw new ArgumentNullException(nameof(record));
             }
 
-            var tasks = _services.Select(service => service.SaveAuditRecordAsync(record))
-                                 .ToArray();
+            var auditTiming = new AuditTiming(record.GetType().Name);
+
+            var tasks = new[]
+            {
+                TimeAsync(_defaultAuditingService, record, auditTiming.MarkDefaultAuditingServiceEnd),
+                TimeAsync(_ifxAuditingService, record, auditTiming.MarkIfxAuditingServiceEnd)
+            };
 
             await Task.WhenAll(tasks);
+
+            auditTiming.MarkTotalEnd();
+
+            auditTiming.WriteToFile();
+        }
+
+        private static async Task TimeAsync(IAuditingService service, AuditRecord record, Action markDone)
+        {
+            if (service != null)
+            {
+                await service.SaveAuditRecordAsync(record);
+            }
+
+            markDone();
         }
     }
 }

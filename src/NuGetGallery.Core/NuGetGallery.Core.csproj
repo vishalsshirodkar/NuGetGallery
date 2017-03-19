@@ -129,6 +129,7 @@
     <Compile Include="Auditing\AuditActor.cs" />
     <Compile Include="Auditing\AuditingService.cs" />
     <Compile Include="Auditing\AuditRecord.cs" />
+    <Compile Include="Auditing\AuditTiming.cs" />
     <Compile Include="Auditing\FailedAuthenticatedOperationAuditRecord.cs" />
     <Compile Include="Auditing\FileSystemAuditingService.cs" />
     <Compile Include="Auditing\CloudAuditingService.cs" />
